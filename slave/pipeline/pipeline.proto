@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+message MyPipelineConfig {
+    string param = 1;
+    string password = 2;
+}
+
+message PipelineStatus {
+    string message = 1;
+}
+
+service MyPipeline {
+    rpc Run(MyPipelineConfig) returns (PipelineStatus) {}
+}

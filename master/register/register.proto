@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+message SlaveConfig {
+    string host = 1;
+    int32 port = 2;
+    string token = 3;
+}
+
+message SlaveRegisterStatus {
+    string message = 1;
+}
+
+service Register {
+    rpc RegisterNewSlave(SlaveConfig) returns (SlaveRegisterStatus) {}
+}
