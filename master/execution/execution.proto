@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+message JobParams {
+    string method = 1;
+    map<string,string> params = 2;
+    
+}
+
+message JobStatus {
+    string message = 1;
+}
+
+service Execution {
+    rpc ExecuteJob(JobParams) returns (JobStatus) {}
+}

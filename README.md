@@ -19,3 +19,4 @@ TODO
 * Master should save a list of slaves to file, and try to find them at start
 * Slave should try to reconnect to master whenever Master goes away
 * slaveList on master needs to be deduped, OR when a new slave registers, we need to check to see if slave is already registered (based on host:port)
+* Master needs a grpc method to call a slave
