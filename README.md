@@ -22,9 +22,9 @@ TODO
 =====
 
 #### Basic stuff:
-* DONE: use reflection on master to list gRPC methods in each slave
+* ~~DONE: use reflection on master to list gRPC methods in each slave~~
 * use viper for configs and make sure each flag actually works
-* DONE: report and act on connection errors to slaves on Master
+* ~~DONE: report and act on connection errors to slaves on Master~~
 
 #### Master-slave discovery
 * Master should save a list of slaves to file, and try to find them at start
@@ -32,7 +32,7 @@ TODO
 * slaveList on master needs to be deduped, OR when a new slave registers, we need to check to see if slave is already registered (based on host:port)
 
 #### Executing Jobs on slaves
-* Master needs a grpc method to call a slave (execution Service) - DONE
+* ~~Master needs a grpc method to call a slave (execution Service) - DONE~~
 * the Execution service needs to call a Job Scheduler
 * The Job Scheduler needs to receive the list of slaves with all their methods and it needs to schedule a job on one of the slaves
 * Scheduler opens a connection to the slave, runs the job and waits for a reply
