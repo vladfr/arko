@@ -1,6 +1,9 @@
 # arko
 
-don't know what this is yet
+ARKO is an SDK for API-driven CI/CD pipelines.
+
+Read up on the what and why: https://writetogether.space/posts/vladfr/my-new-software-project
+
 
 ```
 # Generate protos
