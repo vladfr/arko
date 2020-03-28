@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 
+	execpb "github.com/vladfr/arko/master/execution"
 	pb "github.com/vladfr/arko/master/register"
 )
 
@@ -111,6 +112,14 @@ func (s *registerServer) RegisterNewSlave(ctx context.Context, config *pb.SlaveC
 	return &pb.SlaveRegisterStatus{Message: "done"}, nil
 }
 
+type executionServer struct {
+	execpb.UnimplementedExecutionServer
+}
+
+func (s *executionServer) ExecuteJob(ctx context.Context, params *execpb.JobParams) (*execpb.JobStatus, error) {
+	return &execpb.JobStatus{Message: fmt.Sprintf("%s done", params.Method)}, nil
+}
+
 func main() {
 	fmt.Println("Master starting...")
 	flag.Parse()
@@ -134,6 +143,7 @@ func main() {
 	// }
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterRegisterServer(grpcServer, &registerServer{})
+	execpb.RegisterExecutionServer(grpcServer, &executionServer{})
 	fmt.Println("Server listening for slaves on port", *port)
 
 	ticker := time.NewTicker(time.Duration(5) * time.Second)
