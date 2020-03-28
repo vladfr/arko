@@ -8,7 +8,10 @@ import (
 	"net"
 	"time"
 
+	"github.com/fullstorydev/grpcurl"
+	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
+	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 
 	pb "github.com/vladfr/arko/master/register"
 )
@@ -42,10 +45,44 @@ func pingSlaves(ticker *time.Ticker, done chan bool) {
 					fmt.Println("Cannot connect to slave", slaveAddr)
 				} else {
 					fmt.Println("Opened connection to", slaveAddr)
+					reflectOnSlave(conn)
+					conn.Close()
 				}
-				conn.Close()
 			}
 			fmt.Println("Pinging slaves done")
+		}
+	}
+}
+
+func reflectOnSlave(conn *grpc.ClientConn) {
+	ctx := context.Background()
+	refClient := grpcreflect.NewClient(ctx, reflectpb.NewServerReflectionClient(conn))
+	descSource := grpcurl.DescriptorSourceFromServer(ctx, refClient)
+	svcs, err := grpcurl.ListServices(descSource)
+	if err != nil {
+		fmt.Errorf("Failed to list services: %v", err)
+	}
+	if len(svcs) == 0 {
+		fmt.Println("(No services)")
+	} else {
+		for _, svc := range svcs {
+			sname := fmt.Sprintf("%s\n", svc)
+			dsc, err := descSource.FindSymbol(svc)
+			if err != nil {
+				fmt.Println(err, "Failed to resolve symbol", sname)
+			}
+			fmt.Println(dsc.GetFullyQualifiedName())
+			methods, err := grpcurl.ListMethods(descSource, svc)
+			if err != nil {
+				fmt.Println("Failed to list methods for service", sname, err)
+			} else if len(methods) == 0 {
+				fmt.Println("(No methods)") // probably unlikely
+			} else {
+				for _, m := range methods {
+					fmt.Printf("\t%s\n", m)
+				}
+			}
+
 		}
 	}
 }

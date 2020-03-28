@@ -11,4 +11,6 @@ message PipelineStatus {
 
 service MyPipeline {
     rpc Run(MyPipelineConfig) returns (PipelineStatus) {}
+    rpc DryRun(MyPipelineConfig) returns (PipelineStatus) {}
+    rpc Rollback(MyPipelineConfig) returns (PipelineStatus) {}
 }

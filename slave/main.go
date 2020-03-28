@@ -43,6 +43,16 @@ func (s *pipeline) Run(ctx context.Context, config *pb.MyPipelineConfig) (*pb.Pi
 	return &pb.PipelineStatus{Message: "job execution done"}, nil
 }
 
+func (s *pipeline) DryRun(ctx context.Context, config *pb.MyPipelineConfig) (*pb.PipelineStatus, error) {
+	fmt.Println("Executed pipeline with DryRun")
+	return &pb.PipelineStatus{Message: "job execution done"}, nil
+}
+
+func (s *pipeline) Rollback(ctx context.Context, config *pb.MyPipelineConfig) (*pb.PipelineStatus, error) {
+	fmt.Println("Executed rollback on pipeline")
+	return &pb.PipelineStatus{Message: "job execution done"}, nil
+}
+
 func startSlave() {
 	fmt.Println("Starting slave...")
 	flag.Parse()
