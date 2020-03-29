@@ -26,7 +26,8 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type SlaveConfig struct {
-	Host                 string   `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	// @inject_tag: storm:"index"
+	Host                 string   `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty" storm:"index"`
 	Port                 int32    `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
 	Token                string   `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`

@@ -3,6 +3,7 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 
 message SlaveConfig {
+      // @inject_tag: storm:"index"
     string host = 1;
     int32 port = 2;
     string token = 3;

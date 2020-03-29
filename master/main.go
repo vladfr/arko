@@ -14,18 +14,19 @@ import (
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 
 	execpb "github.com/vladfr/arko/master/execution"
+	"github.com/vladfr/arko/master/models"
 	pb "github.com/vladfr/arko/master/register"
 )
 
 var (
-	tls        = flag.Bool("tls", false, "Connection uses TLS if true, else plain TCP")
-	certFile   = flag.String("cert_file", "", "The TLS cert file")
-	keyFile    = flag.String("key_file", "", "The TLS key file")
-	jsonDBFile = flag.String("json_db_file", "", "A json file containing a list of features")
-	port       = flag.Int("port", 10001, "The server port")
+	tls      = flag.Bool("tls", false, "Connection uses TLS if true, else plain TCP")
+	certFile = flag.String("cert_file", "", "The TLS cert file")
+	keyFile  = flag.String("key_file", "", "The TLS key file")
+	dbFile   = flag.String("db", "arko.db", "The Storm/bbolt database file")
+	port     = flag.Int("port", 10001, "The server port")
 )
 
-func pingSlaves(ticker *time.Ticker, done chan bool) {
+func (s *registerServer) pingSlaves(ticker *time.Ticker, done chan bool) {
 	for {
 		select {
 		case <-done:
@@ -33,9 +34,9 @@ func pingSlaves(ticker *time.Ticker, done chan bool) {
 			return
 		case <-ticker.C:
 			// ticked, we should run
-			fmt.Println("Pinging slaves...")
-			for _, s := range slaveList {
-				slaveAddr := fmt.Sprintf("%s:%d", s.config.GetHost(), s.config.GetPort())
+			fmt.Println("==== Pinging slaves...")
+			for _, slave := range s.db.ActiveSlaves() {
+				slaveAddr := fmt.Sprintf("%s:%d", slave.Config.GetHost(), slave.Config.GetPort())
 				conn, err := grpc.Dial(slaveAddr,
 					grpc.WithInsecure(),
 					grpc.WithBlock(),
@@ -46,74 +47,70 @@ func pingSlaves(ticker *time.Ticker, done chan bool) {
 					fmt.Println("Cannot connect to slave", slaveAddr)
 				} else {
 					fmt.Println("Opened connection to", slaveAddr)
-					reflectOnSlave(conn)
+					fmt.Println("Slave ", slaveAddr, "has status ", slave.Status)
+					fmt.Println("Updating methods of ", slaveAddr)
+					methods, _ := s.reflectOnSlave(conn)
+					if len(methods) > 0 {
+						slave.Methods = methods
+						fmt.Errorf("\tCould not find any methods on slave")
+					}
+					slave.Status = 1
+					s.db.SaveSlave(&slave)
+					fmt.Println("\tMethods on ", slaveAddr, "are :", slave.Methods)
 					conn.Close()
 				}
 			}
-			fmt.Println("Pinging slaves done")
+			fmt.Println("==== Pinging slaves done")
 		}
 	}
 }
 
-func reflectOnSlave(conn *grpc.ClientConn) {
+func (s *registerServer) reflectOnSlave(conn *grpc.ClientConn) (methods []string, err error) {
 	ctx := context.Background()
 	refClient := grpcreflect.NewClient(ctx, reflectpb.NewServerReflectionClient(conn))
 	descSource := grpcurl.DescriptorSourceFromServer(ctx, refClient)
 	svcs, err := grpcurl.ListServices(descSource)
 	if err != nil {
-		fmt.Errorf("Failed to list services: %v", err)
+		fmt.Errorf("\tFailed to list services: %v", err)
 	}
 	if len(svcs) == 0 {
-		fmt.Println("(No services)")
+		fmt.Println("\t(No services)")
 	} else {
+		// Code taken from the wonderful grpcurl library
 		for _, svc := range svcs {
 			sname := fmt.Sprintf("%s\n", svc)
-			dsc, err := descSource.FindSymbol(svc)
+			// dsc, err = descSource.FindSymbol(svc)
+			// if err != nil {
+			// 	fmt.Println(err, "Failed to resolve symbol", sname)
+			// }
+			// fmt.Println(dsc.GetFullyQualifiedName())
+			svcMethods, err := grpcurl.ListMethods(descSource, svc)
+			methods = append(methods, svcMethods...)
 			if err != nil {
-				fmt.Println(err, "Failed to resolve symbol", sname)
-			}
-			fmt.Println(dsc.GetFullyQualifiedName())
-			methods, err := grpcurl.ListMethods(descSource, svc)
-			if err != nil {
-				fmt.Println("Failed to list methods for service", sname, err)
+				fmt.Println("\tFailed to list methods for service", sname, err)
 			} else if len(methods) == 0 {
-				fmt.Println("(No methods)") // probably unlikely
-			} else {
-				for _, m := range methods {
-					fmt.Printf("\t%s\n", m)
-				}
+				fmt.Println("\t(No methods found)")
 			}
-
 		}
 	}
-}
-
-type Slave struct {
-	config *pb.SlaveConfig
-	conn   *grpc.ClientConn
-}
-
-var slaveList []*Slave
-
-func NewSlave(config *pb.SlaveConfig) *Slave {
-	return &Slave{
-		config: config,
-		conn:   nil,
-	}
+	return
 }
 
 type registerServer struct {
-}
-
-func (s *registerServer) RegisterNewSlave(ctx context.Context, config *pb.SlaveConfig) (*pb.SlaveRegisterStatus, error) {
-	slaveList = append(slaveList, NewSlave(config))
-	fmt.Printf("Slave registered at %v:%d", config.GetHost(), config.GetPort())
-	fmt.Println()
-	return &pb.SlaveRegisterStatus{Message: "done"}, nil
+	pb.UnimplementedRegisterServer
+	db models.Datastore
 }
 
 type executionServer struct {
 	execpb.UnimplementedExecutionServer
+	db models.Datastore
+}
+
+func (s *registerServer) RegisterNewSlave(ctx context.Context, config *pb.SlaveConfig) (*pb.SlaveRegisterStatus, error) {
+	s.db.AddSlave(config)
+	fmt.Printf("Slave registered at %v:%d", config.GetHost(), config.GetPort())
+	fmt.Println()
+	return &pb.SlaveRegisterStatus{Message: "done"}, nil
 }
 
 func (s *executionServer) ExecuteJob(ctx context.Context, params *execpb.JobParams) (*execpb.JobStatus, error) {
@@ -123,6 +120,12 @@ func (s *executionServer) ExecuteJob(ctx context.Context, params *execpb.JobPara
 func main() {
 	fmt.Println("Master starting...")
 	flag.Parse()
+
+	db, err := models.NewDB(*dbFile)
+	if err != nil {
+		log.Panicf("Cannot load/create database file %s", dbFile)
+	}
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -142,13 +145,15 @@ func main() {
 	// 	opts = []grpc.ServerOption{grpc.Creds(creds)}
 	// }
 	grpcServer := grpc.NewServer(opts...)
-	pb.RegisterRegisterServer(grpcServer, &registerServer{})
-	execpb.RegisterExecutionServer(grpcServer, &executionServer{})
+
+	registerServer := &registerServer{db: db}
+	pb.RegisterRegisterServer(grpcServer, registerServer)
+	execpb.RegisterExecutionServer(grpcServer, &executionServer{db: db})
 	fmt.Println("Server listening for slaves on port", *port)
 
 	ticker := time.NewTicker(time.Duration(5) * time.Second)
 	done := make(chan bool)
-	go pingSlaves(ticker, done)
+	go registerServer.pingSlaves(ticker, done)
 
 	grpcServer.Serve(lis)
 }
