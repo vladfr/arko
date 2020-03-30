@@ -71,8 +71,11 @@ TODO
 * ~~Master needs a grpc method to call a slave (execution Service) - DONE~~
 * ~~!!DONE the Execution service needs to call a Job Scheduler~~
 * ~~DONE The Job Scheduler needs to receive the list of slaves with all their methods and it needs to schedule a job on one of the slaves~~
-* The Scheduler needs to ask the Slave if it can accept the Job / Or is it the EXECUTOR?
 * ~~DONE Executor opens a connection to the slave, runs the job and waits for a reply~~
+* The Scheduler needs to ask the Slave if it can accept the Job / Or is it the EXECUTOR?
+
+#### Master / Slave messaging
+* we need to add messaging to the Executor so Master can pass params to the Slave (?)
 
 #### Authentication
 * all gRPC comms should be done over TLS (is this enough? do we need an extra token for slaves to auth?)
