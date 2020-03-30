@@ -39,6 +39,7 @@ go run slave/main.go
 For now there is no UI. To run a pipeline you need to call the master's Execution service:
 ```
 # Tell master to start a pipeline execution
+# cd master/ - master doesn't have reflection turned on so you need to give it the path to the proto file
 grpcurl -d '{"method": "MyPipeline.Run"}' -plaintext -proto execution/execution.proto 127.0.0.1:10001 Execution/ExecuteJob
 ```
 
