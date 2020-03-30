@@ -57,7 +57,7 @@ TODO
 * Slaves should report Master connection errors (and retry connecting?) - currently Slaves don't do Ping, maybe they should?
 * Slave should try to reconnect to master whenever Master goes away (?)
 * ~~DONE slaveList on master needs to be deduped, OR when a new slave registers, we need to check to see if slave is already registered (based on host:port)~~
-* In pingSlaves the Master needs to ask for the Slave status and update it. Slave should report 1 for OK and 0 for not OK. Right now, all Slaves should reply with 1; 
+* In pingSlaves the Master needs to actually ask for the Slave status and update it. Slave should report 1 for OK and 0 for not OK. Right now, all Slaves should reply with 1; 
 * in pingSlaves, if a slave doesn't reply, Master should set Status=0
 
 #### Persistence
@@ -69,11 +69,10 @@ TODO
 #### Executing Jobs on slaves
 * ~~DONE: Master needs to save methods on Slaves~~
 * ~~Master needs a grpc method to call a slave (execution Service) - DONE~~
-* the Execution service needs to call a Job Scheduler
-* The Job Scheduler needs to receive the list of slaves with all their methods and it needs to schedule a job on one of the slaves
-* The Scheduler needs to ask the Slave if it can accept the Job
-* Scheduler opens a connection to the slave, runs the job and waits for a reply
-* Execution service receives the response from the Scheduler and prints it
+* ~~!!DONE the Execution service needs to call a Job Scheduler~~
+* ~~DONE The Job Scheduler needs to receive the list of slaves with all their methods and it needs to schedule a job on one of the slaves~~
+* The Scheduler needs to ask the Slave if it can accept the Job / Or is it the EXECUTOR?
+* ~~DONE Executor opens a connection to the slave, runs the job and waits for a reply~~
 
 #### Authentication
 * all gRPC comms should be done over TLS (is this enough? do we need an extra token for slaves to auth?)
