@@ -14,9 +14,13 @@ import (
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 
 	execpb "github.com/vladfr/arko/master/execution"
+	"github.com/vladfr/arko/master/internal/executor"
 	"github.com/vladfr/arko/master/models"
 	pb "github.com/vladfr/arko/master/register"
 )
+
+// SlavePingSeconds sets the interval to ping slaves
+const SlavePingSeconds = 30
 
 var (
 	tls      = flag.Bool("tls", false, "Connection uses TLS if true, else plain TCP")
@@ -103,7 +107,8 @@ type registerServer struct {
 
 type executionServer struct {
 	execpb.UnimplementedExecutionServer
-	db models.Datastore
+	db   models.Datastore
+	exec executor.Executor
 }
 
 func (s *registerServer) RegisterNewSlave(ctx context.Context, config *pb.SlaveConfig) (*pb.SlaveRegisterStatus, error) {
@@ -114,7 +119,12 @@ func (s *registerServer) RegisterNewSlave(ctx context.Context, config *pb.SlaveC
 }
 
 func (s *executionServer) ExecuteJob(ctx context.Context, params *execpb.JobParams) (*execpb.JobStatus, error) {
-	return &execpb.JobStatus{Message: fmt.Sprintf("%s done", params.Method)}, nil
+	result, err := s.exec.Execute(params.Method)
+	if err != nil {
+		result = err.Error()
+	}
+	msg := fmt.Sprintf("%s done: %s", params.Method, result)
+	return &execpb.JobStatus{Message: msg}, nil
 }
 
 func main() {
@@ -125,6 +135,8 @@ func main() {
 	if err != nil {
 		log.Panicf("Cannot load/create database file %s", dbFile)
 	}
+
+	exec := executor.NewJobExecutor(db)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
@@ -148,10 +160,10 @@ func main() {
 
 	registerServer := &registerServer{db: db}
 	pb.RegisterRegisterServer(grpcServer, registerServer)
-	execpb.RegisterExecutionServer(grpcServer, &executionServer{db: db})
+	execpb.RegisterExecutionServer(grpcServer, &executionServer{db: db, exec: exec})
 	fmt.Println("Server listening for slaves on port", *port)
 
-	ticker := time.NewTicker(time.Duration(5) * time.Second)
+	ticker := time.NewTicker(time.Duration(SlavePingSeconds) * time.Second)
 	done := make(chan bool)
 	go registerServer.pingSlaves(ticker, done)
 

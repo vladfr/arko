@@ -10,6 +10,7 @@ require (
 	github.com/golang/protobuf v1.3.5
 	github.com/jhump/protoreflect v1.5.0
 	google.golang.org/grpc v1.28.0
+	istio.io/istio v0.0.0-20200330071856-c62e39664812
 )
 
 replace github.com/vladfr/arko/master/register => ./master/register
