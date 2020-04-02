@@ -1,8 +1,28 @@
 # arko
 
-ARKO is an SDK for API-driven CI/CD pipelines.
+Arko is an SDK for API-driven CI/CD pipelines.
 
 Read up on the what and why: https://writetogether.space/posts/vladfr/my-new-software-project
+
+Summary: a CI/CD slave will be a grpc microservice capable of doing everything that you need it to do. The Master is only responsible for calling these grpcs with params and printing results.
+
+Done so far
+====
+
+This is a very early prototype, but it already works.
+
+The master exposes a register method and an execute method. Slaves can register to the master. The master can then execute jobs on the slaves with parameters, and print back the result to the user.
+
+Architecture
+====
+
+* Master has a `register` service where Slaves can call
+* `register` pings the slaves periodically
+* we also save the slaves to a DB using bbolt and Storm ORM
+* Master has an `execution` service where UI/clients can connect and start jobs
+* The `executor` is responsible for running the gRPC, parsing the result and returning it to the `execution` service
+* The `executor` calls a `scheduler` that selects a valid slave to run the job that was requested.
+* The current scheduler implementation is dumb - it only checks for active slaves (last pinged), and just picks the first one that provides the method that is requested
 
 Development
 ====
