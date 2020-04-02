@@ -7,8 +7,9 @@ import (
 )
 
 type Datastore interface {
-	ActiveSlaves() []Slave
-	AddSlave(*pb.SlaveConfig)
+	GetActiveSlaves() []Slave
+	GetAllSlaves() []Slave
+	AddSlave(*pb.SlaveConfig) *Slave
 	GetSlaveByConfig(*pb.SlaveConfig) (Slave, error)
 	SaveSlave(*Slave) error
 }

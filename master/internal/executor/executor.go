@@ -35,7 +35,7 @@ func NewJobExecutor(db models.Datastore) *JobExecutor {
 
 // Execute runs the job and returns the results
 func (e *JobExecutor) Execute(jobName string, dataJSON string) (string, error) {
-	slaves := e.db.ActiveSlaves()
+	slaves := e.db.GetActiveSlaves()
 	var jobList []string
 
 	slave, err := e.scheduler.FindSlaveForJob(jobName, jobList, slaves)
@@ -50,11 +50,13 @@ func (e *JobExecutor) Execute(jobName string, dataJSON string) (string, error) {
 		grpc.WithBlock(),
 		grpc.WithTimeout(5*time.Second),
 	)
-	defer conn.Close()
 
 	if err != nil {
+		fmt.Printf("Cannot connect to slave %s", slaveAddr)
 		return "", fmt.Errorf("Cannot connect to slave %s", slaveAddr)
 	}
+
+	defer conn.Close()
 
 	// taken from the wonderful grpcurl library
 	ctx := context.Background()

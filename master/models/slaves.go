@@ -14,8 +14,8 @@ type Slave struct {
 	Methods []string
 }
 
-func (db *DB) AddSlave(c *pb.SlaveConfig) {
-	_, err := db.GetSlaveByConfig(c)
+func (db *DB) AddSlave(c *pb.SlaveConfig) *Slave {
+	s, err := db.GetSlaveByConfig(c)
 
 	if err != nil {
 		// did not find a record, error is
@@ -31,6 +31,8 @@ func (db *DB) AddSlave(c *pb.SlaveConfig) {
 	} else {
 		fmt.Println("Slave already registered, skipping.")
 	}
+
+	return &s
 }
 
 func (db *DB) SaveSlave(s *Slave) error {
@@ -43,11 +45,21 @@ func (db *DB) GetSlaveByConfig(c *pb.SlaveConfig) (Slave, error) {
 	return s, err
 }
 
-func (db *DB) ActiveSlaves() []Slave {
+func (db *DB) GetActiveSlaves() []Slave {
 	var slaves []Slave
 	err := db.Find("Status", 1, &slaves)
 	if err != nil {
 		fmt.Errorf("Cannot fetch active slaves")
+		return nil
+	}
+	return slaves
+}
+
+func (db *DB) GetAllSlaves() []Slave {
+	var slaves []Slave
+	err := db.All(&slaves)
+	if err != nil {
+		fmt.Errorf("Cannot fetch all slaves")
 		return nil
 	}
 	return slaves

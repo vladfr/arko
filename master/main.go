@@ -31,7 +31,7 @@ var (
 	port     = flag.Int("port", 10001, "The server port")
 )
 
-func (s *registerServer) pingSlaves(ticker *time.Ticker, done chan bool) {
+func tickPingSlaves(s *registerServer, ticker *time.Ticker, done chan bool) {
 	for {
 		select {
 		case <-done:
@@ -40,34 +40,50 @@ func (s *registerServer) pingSlaves(ticker *time.Ticker, done chan bool) {
 		case <-ticker.C:
 			// ticked, we should run
 			fmt.Println("==== Pinging slaves...")
-			for _, slave := range s.db.ActiveSlaves() {
-				slaveAddr := fmt.Sprintf("%s:%d", slave.Config.GetHost(), slave.Config.GetPort())
-				conn, err := grpc.Dial(slaveAddr,
-					grpc.WithInsecure(),
-					grpc.WithBlock(),
-					grpc.WithTimeout(5*time.Second),
-				)
-
-				if err != nil {
-					fmt.Println("Cannot connect to slave", slaveAddr)
-				} else {
-					fmt.Println("Opened connection to", slaveAddr)
-					fmt.Println("Slave ", slaveAddr, "has status ", slave.Status)
-					fmt.Println("Updating methods of ", slaveAddr)
-					methods, _ := s.reflectOnSlave(conn)
-					if len(methods) > 0 {
-						slave.Methods = methods
-						fmt.Errorf("\tCould not find any methods on slave")
-					}
-					slave.Status = 1
-					s.db.SaveSlave(&slave)
-					fmt.Println("\tMethods on ", slaveAddr, "are :", slave.Methods)
-					conn.Close()
-				}
-			}
+			s.pingAllSlaves()
 			fmt.Println("==== Pinging slaves done")
 		}
 	}
+}
+
+func (s *registerServer) pingAllSlaves() {
+	for _, slave := range s.db.GetAllSlaves() {
+		s.pingSlave(&slave)
+	}
+}
+
+func (s *registerServer) pingSlave(slave *models.Slave) {
+	slaveAddr := fmt.Sprintf("%s:%d", slave.Config.GetHost(), slave.Config.GetPort())
+	conn, err := grpc.Dial(slaveAddr,
+		grpc.WithInsecure(),
+		grpc.WithBlock(),
+		grpc.WithTimeout(5*time.Second),
+	)
+
+	slave.Status = 1
+
+	if err != nil {
+		fmt.Println("Cannot connect to slave", slaveAddr)
+		slave.Status = 0
+	} else {
+		fmt.Println("Opened connection to", slaveAddr)
+		fmt.Println("Updating methods of ", slaveAddr)
+		methods, _ := s.reflectOnSlave(conn)
+
+		if len(methods) > 0 {
+			slave.Methods = methods
+			fmt.Println("\tMethods on ", slaveAddr, "are :", slave.Methods)
+		} else {
+			slave.Status = 0
+			fmt.Printf("\tCould not find any methods on slave")
+		}
+		conn.Close()
+	}
+
+	fmt.Println("Slave ", slaveAddr, "has status ", slave.Status)
+
+	// finally, let's save the slave
+	s.db.SaveSlave(slave)
 }
 
 func (s *registerServer) reflectOnSlave(conn *grpc.ClientConn) (methods []string, err error) {
@@ -113,7 +129,8 @@ type executionServer struct {
 }
 
 func (s *registerServer) RegisterNewSlave(ctx context.Context, config *pb.SlaveConfig) (*pb.SlaveRegisterStatus, error) {
-	s.db.AddSlave(config)
+	slave := s.db.AddSlave(config)
+	s.pingSlave(slave)
 	fmt.Printf("Slave registered at %v:%d", config.GetHost(), config.GetPort())
 	fmt.Println()
 	return &pb.SlaveRegisterStatus{Message: "done"}, nil
@@ -165,9 +182,12 @@ func main() {
 	execpb.RegisterExecutionServer(grpcServer, &executionServer{db: db, exec: exec})
 	fmt.Println("Server listening for slaves on port", *port)
 
+	// ping all slaves right now
+	go registerServer.pingAllSlaves()
+
 	ticker := time.NewTicker(time.Duration(SlavePingSeconds) * time.Second)
 	done := make(chan bool)
-	go registerServer.pingSlaves(ticker, done)
+	go tickPingSlaves(registerServer, ticker, done)
 
 	grpcServer.Serve(lis)
 }

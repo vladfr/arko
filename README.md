@@ -78,7 +78,8 @@ TODO
 * Slave should try to reconnect to master whenever Master goes away (?)
 * ~~DONE slaveList on master needs to be deduped, OR when a new slave registers, we need to check to see if slave is already registered (based on host:port)~~
 * In pingSlaves the Master needs to actually ask for the Slave status and update it. Slave should report 1 for OK and 0 for not OK. Right now, all Slaves should reply with 1; 
-* in pingSlaves, if a slave doesn't reply, Master should set Status=0
+* ~~DONE in pingSlaves, if a slave doesn't reply, Master should set Status=0~~
+* ~~DONE On Register, a slave should immediatelly be saved as Status=1, and its methods rediscovered~~
 
 #### Persistence
 * ~~DONE Master should save a list of slaves to file, and try to find them at start~~
