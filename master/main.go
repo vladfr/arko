@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -119,7 +120,8 @@ func (s *registerServer) RegisterNewSlave(ctx context.Context, config *pb.SlaveC
 }
 
 func (s *executionServer) ExecuteJob(ctx context.Context, params *execpb.JobParams) (*execpb.JobStatus, error) {
-	result, err := s.exec.Execute(params.Method)
+	paramsJSON, _ := json.Marshal(params.GetParams())
+	result, err := s.exec.Execute(params.Method, string(paramsJSON))
 	if err != nil {
 		result = err.Error()
 	}

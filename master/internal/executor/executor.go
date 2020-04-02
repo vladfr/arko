@@ -1,9 +1,9 @@
 package executor
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -16,7 +16,7 @@ import (
 )
 
 type Executor interface {
-	Execute(jobName string) (string, error)
+	Execute(jobName string, dataJSON string) (string, error)
 }
 
 type JobExecutor struct {
@@ -34,7 +34,7 @@ func NewJobExecutor(db models.Datastore) *JobExecutor {
 }
 
 // Execute runs the job and returns the results
-func (e *JobExecutor) Execute(jobName string) (string, error) {
+func (e *JobExecutor) Execute(jobName string, dataJSON string) (string, error) {
 	slaves := e.db.ActiveSlaves()
 	var jobList []string
 
@@ -60,18 +60,23 @@ func (e *JobExecutor) Execute(jobName string) (string, error) {
 	ctx := context.Background()
 	refClient := grpcreflect.NewClient(ctx, reflectpb.NewServerReflectionClient(conn))
 	descSource := grpcurl.DescriptorSourceFromServer(ctx, refClient)
+	// dsc, _ := descSource.FindSymbol(jobName)
+	// msg := dsc.GetOptions()
+	// msg.ProtoMessage() // get the protoreflect message
 
-	data := ""
-	in := strings.NewReader(data)
+	in := strings.NewReader(dataJSON)
 
 	rf, formatter, err := grpcurl.RequestParserAndFormatterFor(grpcurl.Format(grpcurl.FormatJSON), descSource, true, false, in)
-	h := grpcurl.NewDefaultEventHandler(os.Stdout, descSource, formatter, true)
+	var buf bytes.Buffer
+
+	h := NewBufferedEventHandler(&buf, descSource, formatter)
 	err = grpcurl.InvokeRPC(ctx, descSource, conn, jobName, []string{}, h, rf.Next)
 	if err != nil {
-		return "", fmt.Errorf("Failed to invoke method %s on slave %s", jobName, slaveAddr)
+		return "", fmt.Errorf("Failed to invoke method %s on slave %s: %s", jobName, slaveAddr, err.Error())
 	}
+	//grpcurl.PrintStatus(os.Stderr, h.Status, formatter)
 	// end taken from the wonderful grpcurl library
-	grpcurl.PrintStatus(os.Stderr, h.Status, formatter)
 
-	return fmt.Sprintf("Job scheduled on slave %s:%d", slave.Config.GetHost(), slave.Config.GetPort()), nil
+	fmt.Printf("Job scheduled on slave %s:%d", slave.Config.GetHost(), slave.Config.GetPort())
+	return fmt.Sprintf("Job finished with status %s: %s", h.Status.Code(), string(buf.Bytes())), nil
 }

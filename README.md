@@ -40,7 +40,7 @@ For now there is no UI. To run a pipeline you need to call the master's Executio
 ```
 # Tell master to start a pipeline execution
 # cd master/ - master doesn't have reflection turned on so you need to give it the path to the proto file
-grpcurl -d '{"method": "MyPipeline.Run"}' -plaintext -proto execution/execution.proto 127.0.0.1:10001 Execution/ExecuteJob
+grpcurl -d '{"method": "MyPipeline.Run", "params":{"param":"one", "password": "parola"}}' -plaintext -proto master/execution/execution.proto 127.0.0.1:10001 Execution/ExecuteJob
 ```
 
 TODO
@@ -72,15 +72,17 @@ TODO
 * ~~!!DONE the Execution service needs to call a Job Scheduler~~
 * ~~DONE The Job Scheduler needs to receive the list of slaves with all their methods and it needs to schedule a job on one of the slaves~~
 * ~~DONE Executor opens a connection to the slave, runs the job and waits for a reply~~
-* The Scheduler needs to ask the Slave if it can accept the Job / Or is it the EXECUTOR?
+* The Scheduler needs to ask the Slave if it can accept the Job / Or is it the EXECUTOR that needs to ask?
+* * slaves need to have a common endpoint for this; this should be another published gRPC service
 
 #### Master / Slave messaging
-* we need to add messaging to the Executor so Master can pass params to the Slave (?)
+* ~~DONEwe need to add messaging to the Executor so Master can pass params to the SlaveDONE~~
+* implement streaming output from slave to maser to client 
 
 #### Authentication
 * all gRPC comms should be done over TLS (is this enough? do we need an extra token for slaves to auth?)
 * Do slaves need AuthZ at all?
-* slaves should not accept any connections from anywhere else than master
+* slaves should not accept any connections from anywhere else than master ???
 
 #### The UI
 * build a simple UI with React/Vue

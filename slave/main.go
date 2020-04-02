@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	pbm "github.com/vladfr/arko/master/register"
 	pb "github.com/vladfr/arko/slave/pipeline"
@@ -39,8 +40,9 @@ type pipeline struct {
 }
 
 func (s *pipeline) Run(ctx context.Context, config *pb.MyPipelineConfig) (*pb.PipelineStatus, error) {
-	fmt.Println("Executed pipeline")
-	return &pb.PipelineStatus{Message: "job execution done"}, nil
+	time.Sleep(5 * time.Second)
+	fmt.Println("Executed pipeline MyPipeline.Run with ", config.GetParam(), config.GetPassword())
+	return &pb.PipelineStatus{Message: fmt.Sprintf("job execution done with: %s %s", config.GetParam(), config.GetPassword())}, nil
 }
 
 func (s *pipeline) DryRun(ctx context.Context, config *pb.MyPipelineConfig) (*pb.PipelineStatus, error) {
