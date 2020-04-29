@@ -20,6 +20,9 @@ var (
 	keyFile    = flag.String("key_file", "", "The TLS key file")
 	serverAddr = flag.String("master", "127.0.0.1:10001", "Master to connect to")
 	port       = flag.Int("port", 10002, "The server port")
+	rpcMode    = flag.Bool("rpc", false, "Start in RPC mode: run a gRPC method and exit")
+	rpcMethod  = flag.String("rpc_method", "", "The rpc method to call")
+	rpcParams  = flag.String("rpc_params", "", "The rpc params")
 )
 
 // GetOutboundIP Gets preferred outbound ip of this machine
@@ -55,7 +58,7 @@ func (s *pipeline) Rollback(ctx context.Context, config *pb.MyPipelineConfig) (*
 	return &pb.PipelineStatus{Message: "job execution done"}, nil
 }
 
-func startSlave() {
+func startSlave() *grpc.Server {
 	fmt.Println("Starting slave...")
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
@@ -82,9 +85,18 @@ func startSlave() {
 	fmt.Println("Slave listening for connections on port", *port)
 
 	grpcServer.Serve(lis)
+	return grpcServer
 }
 
 func main() {
+
+	if *rpcMode {
+		// we are running in rpc mode, so we only need to call the method and exit
+		if *rpcMethod == "" {
+			panic("RPC mode on, but didn't specify a method")
+		}
+
+	}
 
 	go startSlave()
 
