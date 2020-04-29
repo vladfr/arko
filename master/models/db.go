@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/v3/codec/protobuf"
 	pb "github.com/vladfr/arko/master/register"
@@ -21,7 +23,8 @@ type DB struct {
 func NewDB(dataSourceName string) (*DB, error) {
 	db, err := storm.Open(dataSourceName, storm.Codec(protobuf.Codec))
 	if err != nil {
-		panic("Cannot open database file")
+		fmt.Printf("Cannot open database at %s", dataSourceName)
+		panic(err)
 	}
 	return &DB{db}, nil
 }
