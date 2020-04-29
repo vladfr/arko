@@ -15,24 +15,24 @@ type Slave struct {
 }
 
 func (db *DB) AddSlave(c *pb.SlaveConfig) *Slave {
-	s, err := db.GetSlaveByConfig(c)
+	_, err := db.GetSlaveByConfig(c)
 
 	if err != nil {
 		// did not find a record, error is
-		fmt.Println("Couldn't find record %s", err)
-		s := Slave{
+		fmt.Println(fmt.Sprintf("Couldn't find record %s", err))
+		s := &Slave{
 			Config: c,
 			Status: 1,
 		}
-		errS := db.Save(&s)
+		errS := db.Save(s)
 		if errS != nil {
 			fmt.Errorf("Cannot save slave to db")
 		}
-	} else {
-		fmt.Println("Slave already registered, skipping.")
+		return s
 	}
 
-	return &s
+	fmt.Println("Slave already registered, skipping.")
+	return nil
 }
 
 func (db *DB) SaveSlave(s *Slave) error {
