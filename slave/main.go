@@ -60,7 +60,6 @@ func (s *pipeline) Rollback(ctx context.Context, config *pb.MyPipelineConfig) (*
 
 func startSlave() *grpc.Server {
 	fmt.Println("Starting slave...")
-	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -89,6 +88,7 @@ func startSlave() *grpc.Server {
 }
 
 func main() {
+	flag.Parse()
 
 	if *rpcMode {
 		// we are running in rpc mode, so we only need to call the method and exit
