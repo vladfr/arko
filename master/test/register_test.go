@@ -1,5 +1,7 @@
 package main
 
-func TestRegister() {
+import "testing"
+
+func TestRegister(t *testing.T) {
 
 }

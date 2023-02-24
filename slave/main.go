@@ -20,9 +20,8 @@ var (
 	keyFile    = flag.String("key_file", "", "The TLS key file")
 	serverAddr = flag.String("master", "127.0.0.1:10001", "Master to connect to")
 	port       = flag.Int("port", 10002, "The server port")
-	rpcMode    = flag.Bool("rpc", false, "Start in RPC mode: run a gRPC method and exit")
-	rpcMethod  = flag.String("rpc_method", "", "The rpc method to call")
-	rpcParams  = flag.String("rpc_params", "", "The rpc params")
+	mode       = flag.String("mode", "standalone", "Modes are: standalone (default) connect to master and serve grpc; rpc: execute grpc and exit; delegate: connect to master but delegate grpc to a delegator")
+	engine     = flag.String("engine", "kubernetes", "Used in delegate mode, the engine on which to run grpcs")
 )
 
 // GetOutboundIP Gets preferred outbound ip of this machine
@@ -34,7 +33,6 @@ func GetOutboundIP() net.IP {
 	defer conn.Close()
 
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
-
 	return localAddr.IP
 }
 
@@ -59,7 +57,6 @@ func (s *pipeline) Rollback(ctx context.Context, config *pb.MyPipelineConfig) (*
 }
 
 func startSlave() *grpc.Server {
-	fmt.Println("Starting slave...")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -81,25 +78,11 @@ func startSlave() *grpc.Server {
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterMyPipelineServer(grpcServer, &pipeline{})
 	reflection.Register(grpcServer)
-	fmt.Println("Slave listening for connections on port", *port)
-
 	grpcServer.Serve(lis)
 	return grpcServer
 }
 
-func main() {
-	flag.Parse()
-
-	if *rpcMode {
-		// we are running in rpc mode, so we only need to call the method and exit
-		if *rpcMethod == "" {
-			panic("RPC mode on, but didn't specify a method")
-		}
-
-	}
-
-	go startSlave()
-
+func registerOnMaster() {
 	fmt.Println("Registering on master", *serverAddr)
 	conn, err := grpc.Dial(*serverAddr, grpc.WithInsecure())
 	if err != nil {
@@ -118,6 +101,23 @@ func main() {
 		fmt.Println(err)
 	} else {
 		fmt.Println("Registered on master", *serverAddr)
+	}
+}
+
+func main() {
+	flag.Parse()
+
+	go startSlave()
+	fmt.Println("Slave listening for connections on port", *port)
+
+	if *mode == "delegate" {
+		fmt.Println(fmt.Sprintf("Started in delegate mode with engine '%s'", *engine))
+	}
+
+	if *mode == "rpc" {
+		fmt.Println("Waiting in RPC mode with no master")
+	} else {
+		go registerOnMaster()
 	}
 
 	select {}

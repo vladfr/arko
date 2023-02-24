@@ -152,7 +152,7 @@ func main() {
 
 	db, err := models.NewDB(*dbFile)
 	if err != nil {
-		log.Panicf("Cannot load/create database file %s", dbFile)
+		log.Panicf("Cannot load/create database file %s", *dbFile)
 	}
 
 	exec := executor.NewJobExecutor(db)
